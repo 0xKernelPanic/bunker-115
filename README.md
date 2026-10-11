@@ -2,7 +2,7 @@
 
 A PS2-era survival horror shooter for the browser. Five nights, five ways out, alone or with up to three friends over your own server.
 
-The dead are not omniscient: they hear gunshots, sprinting and hammering, and they see your flashlight. Some lie still until you turn your back, some kneel over a body feeding, some cling to the ceiling. They spread out to surround you, stumble, grab hold of you, and look around before they give up. The Matron cannot be killed. She is slower than you, but she carries a lantern through the dark, remembers where she lost you, and checks the lockers.
+The dead are not omniscient: they hear gunshots, sprinting and hammering, and they see your flashlight. Some lie still until you turn your back, some kneel over a body feeding, some cling to the ceiling. They spread out to surround you, stumble, grab hold of you, and look around before they give up. Nothing you carry can kill the Matron, not until the last night. She is slower than you, but she carries a lantern through the dark, remembers where she lost you, and checks the lockers.
 
 ## The dead
 
@@ -12,7 +12,7 @@ The dead are not omniscient: they hear gunshots, sprinting and hammering, and th
 - **Screamers** do not fight: when one sees you it howls, and everything nearby comes. Then it runs.
 - **Brutes** in straitjackets charge in a straight line, smash through barricades and stagger if they hit a wall.
 - **Weepers** crouch in corners, crying. Leave them be: get close or put your light on one and she comes for you, once.
-- **The Matron**, tall, masked, with her lantern. She cannot die; shooting her only puts her down for a few seconds. Only on the last night, once the serum is gone, can she be killed.
+- **The Matron**, tall, masked, with her lantern. Shooting her only puts her down for a few seconds. Only on the last night, once the serum is gone, can she die.
 
 ## Run locally
 
@@ -124,7 +124,8 @@ Then forward TCP port 8115 on the router to the container and give friends `http
 - `shared/`: the simulation (objectives, the director that paces the night, hearing and sight, hiding and searching, navigation, difficulty), shared by the server and single player. Maps live in `shared/maps/`, documents and endings in `shared/story.js`.
 - `server/`: HTTP + WebSocket server, game rooms and the hall of survivors (`records.js`).
 - `client/`: rendering (three.js 0.128, per-vertex lighting, vertex snapping, dithering), HUD, fear and hallucinations, settings, gamepad, achievements, and WebAudio sound with tension-driven music.
-- `tools/`: `npm test` plays every map with bots and checks every mechanic; `node tools/browser-test.mjs solo|visual|story|over|coop|chaos|login|puzzle` drives the real client in headless Chrome (needs the server running); `node tools/gallery.mjs teammates|zombies|poses|matron|rooms` takes screenshots of characters and rooms; `node tools/perf.mjs` reports frame rate and draw calls per map.
+- `tools/`: `npm test` plays every map with bots and checks every mechanic; `node tools/browser-test.mjs solo|visual|story|over|coop|chaos|login|puzzle|checkpoint|combat|finale` drives the real client in headless Chrome (needs the server running); `node tools/gallery.mjs teammates|zombies|poses|matron|rooms` takes screenshots of characters and rooms; `node tools/perf.mjs` reports frame rate and draw calls per map.
+- `v1-bunkier115.html`: the first prototype, a single self-contained page from before the server and the story existed. Open it directly in a browser.
 
 ## License
 
