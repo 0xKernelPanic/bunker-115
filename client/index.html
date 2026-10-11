@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bunker 115</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik+Wet+Paint&family=Special+Elite&display=swap">
+<style>
+/* Layout: full-screen 3D canvas rendered at 256 lines; a sparse HUD in the corners so the dark stays dark */
+:root{
+  --void:#040505; --ink:#e2dccb; --dim:#8c8676; --blood:#8e120c; --blood-hi:#d02a1c; --gold:#d8bc6a; --pale:#b8c4b0;
+  --rule:#3a342a;
+  --f-display:"Rubik Wet Paint","Impact","Arial Black",sans-serif;
+  --f-ui:"Special Elite","Courier New",monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;background:var(--void);color:var(--ink);overflow:hidden;font-family:var(--f-ui)}
+#game{position:fixed;inset:0;background:var(--void);user-select:none;-webkit-user-select:none}
+#c{width:100%;height:100%;display:block;image-rendering:crisp-edges;image-rendering:pixelated}
+.hud{position:absolute;pointer-events:none}
+#hud{position:absolute;inset:0;pointer-events:none}
+#cross{left:50%;top:50%;width:0;height:0}
+#cross i{position:absolute;background:var(--ink);opacity:.7;box-shadow:0 0 0 1px rgba(0,0,0,.55)}
+#cross .t,#cross .b{width:2px;height:7px;left:-1px}
+#cross .l,#cross .r{height:2px;width:7px;top:-1px}
+#hit{left:50%;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;opacity:0}
+#hit::before,#hit::after{content:"";position:absolute;left:11px;top:-3px;width:2px;height:30px;background:var(--ink);transform:rotate(45deg)}
+#hit::after{transform:rotate(-45deg)}
+#hit.kill::before,#hit.kill::after{background:var(--blood-hi)}
+#objective{left:max(22px,3vw);top:max(18px,3vh);max-width:min(460px,60vw);display:grid;gap:4px;text-shadow:1px 1px 0 #000,0 0 8px #000}
+#objective .lbl{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+#objText{font-size:clamp(15px,1.6vw,19px);color:var(--pale)}
+#objective.flash #objText{animation:objflash 2.4s ease-out}
+#objHint{font-size:clamp(12px,1.15vw,14px);color:var(--dim);line-height:1.35}
+#objNeed{font-size:clamp(12px,1.15vw,14px);color:#d0a070;line-height:1.35}
+#objNeed:empty,#objHint:empty{display:none}
+#guide{left:50%;top:max(14px,2.5vh);transform:translateX(-50%);display:grid;justify-items:center;gap:2px;opacity:0;transition:opacity .6s;text-shadow:1px 1px 0 #000,0 0 8px #000}
+#guide.on{opacity:1}
+#guideArrow{font-size:22px;color:#e8d8a0;transition:transform .15s linear}
+#guideText{font-size:13px;letter-spacing:.06em;color:var(--pale)}
+@keyframes objflash{0%{color:#fff;text-shadow:0 0 14px #fff}100%{color:var(--pale)}}
+#notes{left:max(22px,3vw);top:calc(max(18px,3vh) + 64px);display:grid;gap:3px;font-size:13px;color:var(--dim);text-shadow:1px 1px 0 #000}
+#right{right:max(22px,3vw);bottom:max(18px,3vh);display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+#scoreWrap{position:relative}
+#score{font-size:clamp(18px,2vw,26px);color:var(--gold);text-shadow:2px 2px 0 #000;font-variant-numeric:tabular-nums}
+#pops{position:absolute;right:0;bottom:0}
+.pop{position:absolute;right:0;bottom:6px;color:var(--gold);font-size:16px;white-space:nowrap;text-shadow:1px 1px 0 #000;animation:pop .95s ease-out forwards}
+.pop.big{color:var(--ink)}
+@keyframes pop{from{transform:translate(0,0);opacity:1}to{transform:translate(-50px,-40px);opacity:0}}
+#ammo{font-size:clamp(26px,3vw,40px);text-shadow:2px 2px 0 #000;font-variant-numeric:tabular-nums;line-height:1}
+#ammo small{font-size:.55em;color:var(--dim)}
+#ammo.low #mag{color:var(--blood-hi)}
+#wname{font-size:13px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+#gren{font-size:13px;color:var(--dim);letter-spacing:.2em}
+#bat{font-size:13px;letter-spacing:.1em;color:var(--dim)}
+#bat span{color:#6a6656}
+#bat span.on{color:#e8dca0;text-shadow:0 0 6px rgba(255,230,150,.5)}
+#bat i{font-style:normal;color:#2a2822}
+#bat.empty span{color:var(--blood-hi)}
+#team{right:max(22px,3vw);top:max(18px,3vh);display:grid;gap:4px;font-size:14px;text-shadow:1px 1px 0 #000}
+.mate{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.mate i{width:10px;height:10px;display:inline-block}
+.mate .pt{color:var(--gold);font-variant-numeric:tabular-nums;min-width:4ch;text-align:right}
+.mate .st{font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:1px 5px}
+.mate .down{background:var(--blood);color:#fff}
+.mate .dead{background:#333;color:var(--dim)}
+.mate .out{background:#2a3a2a;color:var(--pale)}
+#prompt{left:50%;top:61%;transform:translateX(-50%);font-size:clamp(14px,1.5vw,19px);text-shadow:1px 1px 0 #000,0 0 10px #000;white-space:nowrap;text-align:center}
+#prompt.deny{color:var(--blood-hi)}
+#bar{left:50%;top:66%;transform:translateX(-50%);width:min(260px,60vw);text-align:center;font-size:13px;text-shadow:1px 1px 0 #000}
+#bar .track{height:6px;background:rgba(0,0,0,.6);margin-top:4px;border:1px solid var(--rule)}
+#barFill{height:100%;width:0;background:var(--ink)}
+#downMsg{left:50%;top:32%;transform:translateX(-50%);font-family:var(--f-display);font-size:clamp(26px,4vw,48px);color:var(--blood-hi);text-align:center;text-shadow:0 0 18px #000}
+#announce{left:50%;top:22%;transform:translateX(-50%);font-family:var(--f-ui);font-size:clamp(20px,2.6vw,32px);letter-spacing:.12em;color:var(--pale);opacity:0;text-align:center;white-space:nowrap;text-shadow:0 0 18px rgba(0,0,0,.9)}
+#announce.red{color:var(--blood-hi)}
+#announce.big{font-family:var(--f-display);font-size:clamp(36px,6vw,80px);letter-spacing:0}
+#announce.show{animation:ann 3.2s ease-out forwards}
+@keyframes ann{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
+#pups{left:50%;bottom:max(18px,3vh);transform:translateX(-50%);display:flex;gap:18px}
+.pu{font-size:12px;text-align:center;color:var(--pale);text-shadow:1px 1px 0 #000}
+.pu b{display:block;font-size:22px;font-weight:normal}
+
+.screen{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:radial-gradient(ellipse at 50% 40%,rgba(8,10,8,.35),rgba(2,3,2,.94) 75%);overflow:auto}
+.card{width:min(680px,100%);display:grid;gap:18px;padding-block:8px}
+.eyebrow{margin:0;font-size:12px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase}
+h1{margin:0;font-family:var(--f-display);font-weight:normal;color:var(--blood);font-size:clamp(56px,13vw,124px);line-height:.85;text-wrap:balance;text-shadow:0 4px 0 #000,0 0 40px rgba(140,10,0,.3)}
+h1 span{color:var(--ink);font-size:.5em;margin-left:.2em;vertical-align:.55em}
+h2{margin:0;font-family:var(--f-display);font-weight:normal;font-size:clamp(34px,6vw,60px);color:var(--blood);line-height:.95;text-wrap:balance}
+h2.won{color:var(--pale)}
+.lede{margin:0;font-size:17px;line-height:1.55;max-width:54ch}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{font:inherit;font-size:19px;letter-spacing:.08em;color:var(--void);background:var(--ink);border:0;padding:11px 22px;cursor:pointer;text-transform:uppercase;box-shadow:4px 4px 0 var(--blood)}
+.btn:hover{background:#fff}
+.btn:focus-visible,.mapcard:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--rule)}
+.btn.ghost:hover{box-shadow:inset 0 0 0 2px var(--ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+label.field{display:grid;gap:6px;font-size:13px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+input[type=text]{font:inherit;font-size:20px;background:rgba(0,0,0,.5);color:var(--ink);border:1px solid var(--rule);padding:8px 12px;width:min(320px,100%);box-sizing:border-box}
+input.code{text-transform:uppercase;letter-spacing:.3em;width:8ch}
+.maps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.mapcard{font:inherit;text-align:left;color:var(--ink);background:rgba(0,0,0,.45);border:1px solid var(--rule);padding:12px 14px;cursor:pointer;display:grid;gap:6px}
+.mapcard b{font-family:var(--f-display);font-weight:normal;font-size:24px;color:var(--ink)}
+.mapcard span{font-size:13px;color:var(--dim);line-height:1.4}
+.mapcard[aria-pressed=true]{border-color:var(--blood-hi);box-shadow:inset 0 0 0 1px var(--blood-hi)}
+.sens{display:flex;gap:12px;align-items:center;font-size:14px;color:var(--dim)}
+.sens input{accent-color:var(--blood-hi);width:150px}
+.keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:6px 22px;margin:0;padding:14px 0 0;border-top:1px solid var(--rule);font-size:14px}
+.keys div{display:flex;gap:10px;min-width:0}
+.keys dt{min-width:88px;color:var(--gold)}
+.keys dd{margin:0}
+.note{margin:0;font-size:13px;color:var(--dim);line-height:1.5}
+.err{color:var(--blood-hi)}
+.bigcode{font-family:var(--f-display);font-size:clamp(48px,10vw,88px);letter-spacing:.12em;color:var(--ink);line-height:1}
+.plist{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:18px}
+.plist li{display:flex;gap:10px;align-items:center;border-top:1px solid var(--rule);padding-top:6px}
+.plist .tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.tblwrap{overflow-x:auto}
+.tbl th{font-weight:normal;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:right;padding:4px 8px;border-bottom:1px solid var(--rule)}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{text-align:right;padding:6px 8px;font-size:18px;border-bottom:1px solid var(--rule)}
+#tip{left:50%;bottom:calc(max(18px,3vh) + 54px);transform:translateX(-50%);max-width:min(560px,80vw);text-align:center;font-size:14px;color:var(--pale);text-shadow:1px 1px 0 #000,0 0 10px #000;opacity:0;transition:opacity .6s}
+#tip.on{opacity:1}
+#fps{right:8px;bottom:4px;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px;z-index:5}
+#intro{background:#000;pointer-events:none;opacity:0;transition:opacity 1.2s}
+#game.playing:not(.freemouse) canvas{cursor:none}
+#clickPlay{background:rgba(0,0,0,.55);cursor:pointer;z-index:6;align-content:center;gap:12px;text-align:center}
+#clickPlay p{margin:0;color:var(--dim)}
+#intro.on{opacity:1}
+/* the epilogue and credits after the last night */
+#credits{background:#000;z-index:8;overflow:hidden;place-items:stretch;padding:0;opacity:0;transition:opacity 2s}
+#credits.on{opacity:1}
+#credits .roll{position:absolute;left:50%;top:100%;width:min(640px,calc(100vw - 32px));transform:translateX(-50%);display:grid;gap:22px;text-align:center;will-change:transform}
+#credits p{margin:0;font-size:clamp(15px,1.8vw,19px);line-height:1.6;color:var(--pale)}
+#credits h2{margin:0 0 8px;font-family:var(--f-display);font-weight:normal;font-size:clamp(40px,7vw,80px);color:var(--blood)}
+#credits .who{display:grid;gap:2px;margin-top:10px}
+#credits .who b{font-weight:normal;color:var(--ink);font-size:clamp(15px,1.8vw,19px)}
+#credits .who span{color:var(--dim);font-size:13px;letter-spacing:.2em;text-transform:uppercase}
+#credits .stat{color:var(--dim);font-size:14px;letter-spacing:.15em;text-transform:uppercase}
+#credits .end{font-family:var(--f-display);font-size:clamp(34px,6vw,64px);color:var(--blood-hi);margin-top:30vh;margin-bottom:40vh}
+#creditsSkip{position:absolute;right:16px;bottom:16px;z-index:1}
+#intro .lines{justify-items:center}
+#intro .lines{display:grid;gap:14px;text-align:center}
+#intro .l1{font-family:var(--f-display);font-size:clamp(38px,7vw,84px);color:var(--blood)}
+#intro .l2{font-size:clamp(14px,1.6vw,18px);letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+#intro .l4{font-size:clamp(14px,1.6vw,18px);font-style:italic;color:var(--blood-hi);max-width:46ch}
+#intro.on .l4{transition-delay:2.6s}
+#intro .l3{font-size:clamp(15px,1.8vw,20px);color:var(--pale);max-width:46ch}
+#intro span{opacity:0;transition:opacity 1.6s}
+#intro.on span{opacity:1}
+#intro.on .l2{transition-delay:.9s}
+#intro.on .l3{transition-delay:1.8s}
+#reader{background:rgba(0,0,0,.72)}
+#keypad{pointer-events:none}
+.paper.keypad{width:min(360px,100%);text-align:center;background:#1a1814;color:var(--ink);border:1px solid var(--rule);box-shadow:0 10px 40px rgba(0,0,0,.8)}
+.paper.keypad .digits{font-size:44px;letter-spacing:.2em;color:#e8d8a0;font-family:var(--f-ui)}
+.jsep{margin:10px 0 2px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.paper{width:min(560px,100%);max-height:calc(100% - 32px);overflow:auto;box-sizing:border-box;background:#cdc4a4;color:#2a2218;padding:28px 30px;box-shadow:0 10px 40px rgba(0,0,0,.8),inset 0 0 60px rgba(90,60,20,.35);font-family:var(--f-ui);display:grid;gap:14px}
+.paper h3{margin:0;font-size:22px;letter-spacing:.04em}
+.paper pre{margin:0;white-space:pre-wrap;font-family:inherit;font-size:16px;line-height:1.6}
+.paper .hint{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6a5a40}
+#journal{background:rgba(0,0,0,.8)}
+.jcard{width:min(760px,100%);max-height:calc(100% - 32px);display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:18px}
+.jlist{display:grid;gap:6px;align-content:start;overflow:auto}
+.jlist button{font:inherit;text-align:left;background:transparent;color:var(--ink);border:1px solid var(--rule);padding:8px 10px;cursor:pointer}
+.jlist button[aria-pressed=true]{border-color:var(--gold);color:var(--gold)}
+.jlist .missing{color:#4a463e;border-style:dashed;cursor:default}
+@media (max-width:640px){.jcard{grid-template-columns:1fr}}
+#loading{background:var(--void);font-size:14px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+.diffs{display:flex;flex-wrap:wrap;gap:8px}
+.diffs button{font:inherit;font-size:15px;background:transparent;color:var(--ink);border:1px solid var(--rule);padding:8px 14px;cursor:pointer}
+.diffs button[aria-pressed=true]{border-color:var(--blood-hi);box-shadow:inset 0 0 0 1px var(--blood-hi)}
+.diffs button:disabled{opacity:.5;cursor:default}
+.mapcard .rec{font-size:12px;color:var(--gold)}
+.set{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px);gap:10px 18px;align-items:center;margin:0}
+.set label{font-size:15px}
+.set input[type=range]{accent-color:var(--blood-hi);width:100%}
+.set select{font:inherit;background:#111;color:var(--ink);border:1px solid var(--rule);padding:4px 6px}
+.set .val{font-size:12px;color:var(--dim);margin-left:6px}
+#ending{margin:0;font-size:17px;line-height:1.6;max-width:56ch;color:var(--pale)}
+#fade{background:#000;opacity:0;pointer-events:none;transition:opacity 2.4s}
+#fade.on{opacity:1}
+#fade.red{background:#2a0000}
+#captions{left:50%;bottom:calc(max(18px,3vh) + 90px);transform:translateX(-50%);display:grid;gap:2px;text-align:center;font-size:14px;color:#c8c2b0;text-shadow:1px 1px 0 #000,0 0 8px #000}
+#toast{right:max(22px,3vw);top:calc(max(18px,3vh) + 110px);max-width:280px;padding:10px 12px;background:rgba(0,0,0,.75);border:1px solid var(--gold);color:var(--ink);font-size:13px;opacity:0;transition:opacity .6s}
+#toast.on{opacity:1}
+#toast b{display:block;color:var(--gold);font-weight:normal;letter-spacing:.12em;text-transform:uppercase;font-size:11px}
+.hall{display:grid;gap:6px;border-top:1px solid var(--rule);padding-top:12px}
+.hall h3{margin:0;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);font-weight:normal}
+.hall ol{margin:0;padding-left:22px;display:grid;gap:3px;font-size:14px}
+.hall .t{color:var(--gold);font-variant-numeric:tabular-nums;margin-left:8px}
+.achlist{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.achlist li{display:grid;gap:2px;border-top:1px solid var(--rule);padding-top:8px}
+.achlist b{font-weight:normal;font-size:17px}
+.achlist span{font-size:13px;color:var(--dim)}
+.achlist li.locked b{color:#5a564c}
+.achlist li.got b{color:var(--gold)}
+@media (prefers-reduced-motion:reduce){.pop,#announce.show,#objective.flash #objText{animation-duration:.01s}}
+</style>
+<script type="importmap">{ "imports": { "three": "../node_modules/three/build/three.module.js" } }</script>
+</head>
+<body>
+<div id="game">
+  <canvas id="c"></canvas>
+  <div id="hud" hidden>
+    <div id="cross" class="hud"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
+    <div id="hit" class="hud"></div>
+    <div id="objective" class="hud"><span class="lbl">Objective</span><span id="objText"></span><span id="objHint"></span><span id="objNeed"></span></div>
+    <div id="guide" class="hud" aria-live="polite"><span id="guideArrow">▲</span><span id="guideText"></span></div>
+    <div id="notes" class="hud"></div>
+    <div id="team" class="hud"></div>
+    <div id="right" class="hud">
+      <div id="scoreWrap"><div id="score">500</div><div id="pops"></div></div>
+      <div id="ammo"><span id="mag">8</span><small> / <span id="res">48</span></small></div>
+      <div id="wname">M1911</div>
+      <div id="gren"></div>
+      <div id="bat"></div>
+    </div>
+    <div id="prompt" class="hud"></div>
+    <div id="bar" class="hud" hidden><span id="barLabel"></span><div class="track"><div id="barFill"></div></div></div>
+    <div id="downMsg" class="hud" hidden></div>
+    <div id="announce" class="hud"></div>
+    <div id="pups" class="hud"></div>
+    <div id="tip" class="hud"></div>
+    <div id="captions" class="hud"></div>
+    <div id="toast" class="hud"><b>Achievement</b><span id="toastText"></span></div>
+  </div>
+  <div id="fade" class="overlay"></div>
+  <div id="fps" class="hud" hidden></div>
+  <div id="credits" class="overlay" hidden><div class="roll" id="creditsRoll"></div><button id="creditsSkip" class="btn ghost" type="button">Continue</button></div>
+  <div id="intro" class="overlay"><div class="lines"><span class="l1"></span><span class="l2"></span><span class="l3"></span><span class="l4"></span></div></div>
+  <div id="clickPlay" class="overlay" hidden><button id="clickPlayBtn" class="btn">Click to play</button><p id="clickPlayNote">The mouse is free. Click to take control again.</p></div>
+  <div id="reader" class="overlay" hidden><div class="paper" role="dialog" aria-labelledby="readerTitle"><h3 id="readerTitle"></h3><pre id="readerText"></pre><span class="hint">F, Esc or click to put it away · J opens the journal</span></div></div>
+  <div id="journal" class="overlay" hidden><div class="jcard"><div class="jlist" id="jlist"></div><div class="paper"><h3 id="jTitle">Journal</h3><pre id="jText">Documents you find are kept here.</pre><span class="hint">J or Esc to close</span></div></div></div>
+  <div id="keypad" class="overlay" hidden><div class="paper keypad" role="dialog" aria-labelledby="keypadTitle"><h3 id="keypadTitle">The safe</h3><div id="keypadDigits" class="digits">_ _ _ _</div><span class="hint" id="keypadMsg"></span></div></div>
+  <div id="loading" class="overlay" hidden>Loading</div>
+
+  <div id="menu" class="screen">
+    <div class="card">
+      <p class="eyebrow">Disc 1 · Survival horror · 1 to 4 players</p>
+      <h1>Bunker<span>115</span></h1>
+      <p class="lede">The power is out and the dead are not resting. They hear your gunshots and footsteps, and they see your flashlight. Find a way out before the night ends you.</p>
+      <label class="field" for="nick">Your name<input type="text" id="nick" maxlength="16" autocomplete="nickname"></label>
+      <div class="maps" id="maps" role="group" aria-label="Map"></div>
+      <div class="diffs" id="diffs" role="group" aria-label="Difficulty"></div>
+      <div class="row">
+        <button id="soloBtn" class="btn">Play alone</button>
+        <button id="hostBtn" class="btn ghost">Host co-op game</button>
+      </div>
+      <div class="row">
+        <label class="field" for="joinCode">Game code<input type="text" id="joinCode" class="code" maxlength="4" autocomplete="off"></label>
+        <button id="joinBtn" class="btn ghost">Join</button>
+      </div>
+      <p id="mpNote" class="note"></p>
+      <div class="row"><button id="settingsBtn" class="btn ghost">Settings</button><button id="achBtn" class="btn ghost">Achievements</button></div>
+      <div class="hall" id="hall" hidden><h3 id="hallTitle">Hall of survivors</h3><ol id="hallList"></ol></div>
+      <dl class="keys">
+        <div><dt>WASD</dt><dd>move (walking is quieter)</dd></div>
+        <div><dt>Shift</dt><dd>sprint (they hear it)</dd></div>
+        <div><dt>Space</dt><dd>jump</dd></div>
+        <div><dt>LMB / RMB</dt><dd>fire / aim</dd></div>
+        <div><dt>R</dt><dd>reload</dd></div>
+        <div><dt>F</dt><dd>use, pick up; hold to board a window or revive</dd></div>
+        <div><dt>L</dt><dd>flashlight (drains the battery)</dd></div>
+        <div><dt>G / V</dt><dd>grenade / knife</dd></div>
+        <div><dt>1 · 2 · Q</dt><dd>switch weapon (or wheel)</dd></div>
+        <div><dt>J</dt><dd>journal of found documents</dd></div>
+        <div><dt>Esc / P</dt><dd>pause</dd></div>
+        <div><dt>Gamepad</dt><dd>sticks, RT fire, LT aim, A jump, X use, B knife, Y switch, RB grenade, LB light</dd></div>
+      </dl>
+      <p class="note" id="deviceNote">Headphones recommended. Play with keyboard and mouse, or a gamepad.</p>
+    </div>
+  </div>
+
+  <div id="lobby" class="screen" hidden>
+    <div class="card">
+      <p class="eyebrow">Co-op game · give your friends this code</p>
+      <div class="bigcode" id="lobbyCode">----</div>
+      <div class="maps" id="lobbyMaps" role="group" aria-label="Map"></div>
+      <div class="diffs" id="lobbyDiffs" role="group" aria-label="Difficulty"></div>
+      <ul class="plist" id="lobbyPlayers"></ul>
+      <p class="note" id="lobbyNote"></p>
+      <div class="row">
+        <button id="startBtn" class="btn">Start</button>
+        <button id="leaveBtn" class="btn ghost">Leave</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pause" class="screen" hidden>
+    <div class="card">
+      <h2 id="pauseTitle">Paused</h2>
+      <p class="lede" id="pauseObj"></p>
+      <p class="note" id="pauseNote"></p>
+      <div class="row">
+        <button id="resumeBtn" class="btn">Resume</button>
+        <button id="pauseJournalBtn" class="btn ghost">Journal</button>
+        <button id="pauseSettingsBtn" class="btn ghost">Settings</button>
+        <button id="quitBtn" class="btn ghost">Quit to menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings" class="screen" hidden>
+    <div class="card">
+      <h2>Settings</h2>
+      <div class="set">
+        <label for="setVol">Master volume</label><input type="range" id="setVol" min="0" max="1" step="0.05">
+        <label for="setMusic">Music</label><input type="range" id="setMusic" min="0" max="1.5" step="0.05">
+        <label for="sndTest">Sound check</label><div><button id="sndTest" class="btn ghost">Test sound</button> <span id="sndState" class="note" role="status"></span></div>
+        <label for="setBright">Brightness</label><input type="range" id="setBright" min="0.7" max="1.6" step="0.05">
+        <label for="setFov">Field of view</label><input type="range" id="setFov" min="60" max="95" step="1">
+        <label for="sens">Mouse sensitivity</label><input type="range" id="sens" min="0.4" max="3" step="0.1">
+        <label for="setInvert">Invert mouse Y</label><select id="setInvert"><option value="0">Off</option><option value="1">On</option></select>
+        <label for="setRes">Picture</label><select id="setRes"><option value="256">PS2 (256 lines)</option><option value="360">Sharper (360 lines)</option><option value="480">Clean (480 lines)</option><option value="0">Auto (sharper when the computer can keep up)</option></select>
+        <label for="setFear">Hallucinations</label><select id="setFear"><option value="1">On</option><option value="0">Off</option></select>
+        <label for="setTips">Hints</label><select id="setTips"><option value="1">On</option><option value="0">Off</option></select>
+        <label for="setCaptions">Captions for sounds</label><select id="setCaptions"><option value="0">Off</option><option value="1">On</option></select>
+        <label for="setFps">Show FPS</label><select id="setFps"><option value="0">Off</option><option value="1">On</option></select>
+      </div>
+      <div class="row"><button id="settingsBack" class="btn">Back</button></div>
+    </div>
+  </div>
+
+  <div id="achScreen" class="screen" hidden>
+    <div class="card">
+      <h2>Achievements</h2>
+      <ul class="achlist" id="achList"></ul>
+      <div class="row"><button id="achBack" class="btn">Back</button></div>
+    </div>
+  </div>
+
+  <div id="over" class="screen" hidden>
+    <div class="card">
+      <p class="eyebrow" id="overEyebrow">The night is over</p>
+      <h2 id="overTitle">You died</h2>
+      <p id="ending"></p>
+      <p class="note" id="overTime"></p>
+      <div class="tblwrap"><table class="tbl" id="overTable"></table></div>
+      <div class="row">
+        <button id="cpBtn" class="btn" hidden>Return to the last checkpoint</button>
+        <button id="againBtn" class="btn">Play again</button>
+        <button id="overMenuBtn" class="btn ghost">Main menu</button>
+      </div>
+      <p class="note" id="overNote"></p>
+    </div>
+  </div>
+</div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

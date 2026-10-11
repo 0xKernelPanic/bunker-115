@@ -1,0 +1,20 @@
+{
+  "name": "bunkier-115",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PS2-era co-op survival horror shooter",
+  "scripts": {
+    "start": "node server/index.js",
+    "smoke": "node tools/smoke.mjs",
+    "pack": "bash tools/pack.sh",
+    "test": "node tools/smoke.mjs"
+  },
+  "dependencies": {
+    "three": "0.128.0",
+    "ws": "8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

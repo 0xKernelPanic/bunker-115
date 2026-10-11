@@ -1,0 +1,40 @@
+[Unit]
+Description=Bunker 115 co-op game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bunkier
+Group=bunkier
+WorkingDirectory=/opt/bunkier-115
+Environment=PORT=8115
+Environment=NODE_ENV=production
+Environment=DATA_DIR=/var/lib/bunkier
+# GAME_PASSWORD=... lives here, readable by root only
+EnvironmentFile=-/etc/bunkier/env
+StateDirectory=bunkier
+ExecStart=/usr/bin/node --max-old-space-size=256 server/index.js
+Restart=always
+RestartSec=2
+
+# The game only needs to read its own files and write its records.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+UMask=0077
+MemoryMax=400M
+TasksMax=64
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target
