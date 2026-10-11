@@ -125,3 +125,7 @@ Then forward TCP port 8115 on the router to the container and give friends `http
 - `server/`: HTTP + WebSocket server, game rooms and the hall of survivors (`records.js`).
 - `client/`: rendering (three.js 0.128, per-vertex lighting, vertex snapping, dithering), HUD, fear and hallucinations, settings, gamepad, achievements, and WebAudio sound with tension-driven music.
 - `tools/`: `npm test` plays every map with bots and checks every mechanic; `node tools/browser-test.mjs solo|visual|story|over|coop|chaos|login|puzzle` drives the real client in headless Chrome (needs the server running); `node tools/gallery.mjs teammates|zombies|poses|matron|rooms` takes screenshots of characters and rooms; `node tools/perf.mjs` reports frame rate and draw calls per map.
+
+## License
+
+Public domain, see [LICENSE](LICENSE) ([The Unlicense](https://unlicense.org/)).
